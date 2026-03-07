@@ -1,8 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #CCFF00;
+}
 
 body {
+  @apply bg-black text-white;
   overscroll-behavior: none; /* Prevents "bounce" on mobile */
-  background-color: black;
+}
+
+/* Custom utility for the massive scoreboard numbers */
+.text-court-score {
+  font-size: clamp(8rem, 40vw, 15rem);
 }
