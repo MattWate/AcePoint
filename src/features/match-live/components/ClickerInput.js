@@ -2,29 +2,35 @@
 import { useEffect, useRef } from 'react';
 
 export default function ClickerInput({ onAction }) {
-  const inputRef = useRef(null);
   const audioRef = useRef(null);
+  const lastVolume = useRef(0.5);
   const clickCount = useRef(0);
-  const timer = useRef(0);
+  const timer = useRef(null);
 
   useEffect(() => {
     // 1. HID Keyboard Listener (Standard)
     const handleKeyDown = (e) => {
-      if (["Enter", " ", "ArrowUp", "VolumeUp"].includes(e.key)) {
+      // Catch standard keys OR the specific 'VolumeUp' key string
+      if (["Enter", " ", "ArrowUp", "VolumeUp", "VolumeDown"].includes(e.key)) {
         e.preventDefault();
         registerClick();
       }
     };
 
-    // 2. Volume Event Listener (Android/iOS Fallback)
-    const handleVolume = () => {
-      // Any volume change is treated as a single click
-      onAction('POINT_A');
+    // 2. Volume Event Listener (The Android "Workaround")
+    const handleVolumeChange = (e) => {
+      const currentVolume = e.target.volume;
+      // If volume changed, someone pressed a hardware button
+      if (currentVolume !== lastVolume.current) {
+        registerClick();
+        lastVolume.current = currentVolume;
+      }
     };
 
     const registerClick = () => {
       clickCount.current++;
       if (timer.current) clearTimeout(timer.current);
+
       timer.current = setTimeout(() => {
         if (clickCount.current === 1) onAction('POINT_A');
         else if (clickCount.current === 2) onAction('POINT_B');
@@ -34,20 +40,30 @@ export default function ClickerInput({ onAction }) {
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    // Note: volumechange requires an active media element on some browsers
-    window.addEventListener('volumechange', handleVolume);
+    
+    // Logic to keep the hidden audio "active" for the listener
+    const audio = audioRef.current;
+    if (audio) {
+      audio.addEventListener('volumechange', handleVolumeChange);
+    }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('volumechange', handleVolume);
+      if (audio) audio.removeEventListener('volumechange', handleVolumeChange);
     };
   }, [onAction]);
 
   return (
-    <div className="hidden">
-      <input ref={inputRef} readOnly autoFocus />
-      {/* Silent audio to 'prime' the volume listener */}
-      <audio ref={audioRef} src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" loop />
+    <div className="hidden" aria-hidden="true">
+      {/* Hidden input for keyboard focus */}
+      <input type="text" autoFocus readOnly />
+      {/* Silent audio loop to enable volume event tracking on Android */}
+      <audio 
+        ref={audioRef} 
+        src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" 
+        loop 
+        muted={false}
+      />
     </div>
   );
 }
