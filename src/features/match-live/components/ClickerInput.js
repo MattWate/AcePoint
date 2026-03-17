@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'react';
 
 export default function ClickerInput({ onAction }) {
   const inputRef = useRef(null);
-  const audioRef = useRef(null);
   const clickCount = useRef(0);
   const timer = useRef(null);
 
@@ -12,23 +11,24 @@ export default function ClickerInput({ onAction }) {
       if (inputRef.current) inputRef.current.focus();
     };
 
-    // Force focus every time the user touches the screen
+    // Re-focus whenever the user interacts with the app
     window.addEventListener('touchstart', focusInput);
-    window.addEventListener('click', focusInput);
-    
-    // Initial focus
+    window.addEventListener('mousedown', focusInput);
     focusInput();
 
     return () => {
       window.removeEventListener('touchstart', focusInput);
-      window.removeEventListener('click', focusInput);
+      window.removeEventListener('mousedown', focusInput);
     };
   }, []);
 
   const handleKeyDown = (e) => {
-    // Android Clickers often send 'Enter', 'VolumeUp', or 'ArrowUp'
+    // DIAGNOSTIC: This alert will tell you exactly what your button sends
+    // alert(`Detected: ${e.key}`); 
+
+    // Capture standard keys and the Volume keys used by Android clickers
     if (["Enter", " ", "ArrowUp", "VolumeUp", "VolumeDown"].includes(e.key)) {
-      e.preventDefault();
+      e.preventDefault(); // STOP the volume bar from appearing
       
       clickCount.current++;
       if (timer.current) clearTimeout(timer.current);
@@ -43,17 +43,14 @@ export default function ClickerInput({ onAction }) {
   };
 
   return (
-    <div className="fixed top-0 left-0 w-0 h-0 overflow-hidden pointer-events-none">
-      <input
-        ref={inputRef}
-        onKeyDown={handleKeyDown}
-        type="text"
-        inputMode="none" // Prevents the software keyboard from popping up
-        autoFocus
-        className="opacity-0"
-      />
-      {/* This silent audio helps "keep alive" the hardware button bridge on some Android versions */}
-      <audio ref={audioRef} src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" loop />
-    </div>
+    <input
+      ref={inputRef}
+      onKeyDown={handleKeyDown}
+      type="text"
+      inputMode="none" // Hide software keyboard
+      className="fixed opacity-0 pointer-events-none inset-0 w-full h-full z-[9999]"
+      aria-hidden="true"
+      autoFocus
+    />
   );
 }
