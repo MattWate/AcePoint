@@ -2,33 +2,28 @@
 import { useState, useCallback } from 'react';
 import { PADEL_POINTS, getInitialState, updateScore } from '@/core/padel-logic/scoring';
 import ClickerInput from '@/features/match-live/components/ClickerInput';
+import InputDebugger from '@/features/match-live/components/InputDebugger';
 
 export default function MatchPage() {
   const [match, setMatch] = useState(getInitialState());
   const [history, setHistory] = useState([]);
-  const [activeFlash, setActiveFlash] = useState(null); // Tracks which team just scored
+  const [activeFlash, setActiveFlash] = useState(null);
 
   const triggerFlash = (team) => {
     setActiveFlash(team);
-    setTimeout(() => setActiveFlash(null), 300); // Flash duration
+    setTimeout(() => setActiveFlash(null), 300);
   };
 
   const handleAction = useCallback((type) => {
     if (type === 'POINT_A' || type === 'POINT_B') {
       const winner = type === 'POINT_A' ? 'A' : 'B';
-      
-      // Save current state to history before updating
       setHistory(prev => [...prev, match]);
-      
-      // Update score and trigger visual feedback
       setMatch(prev => updateScore(prev, winner));
       triggerFlash(winner);
     } 
     
     if (type === 'UNDO') {
       if (history.length === 0) return;
-      
-      // Pop the last state from history
       const previousState = history[history.length - 1];
       setMatch(previousState);
       setHistory(prev => prev.slice(0, -1));
@@ -37,6 +32,9 @@ export default function MatchPage() {
 
   return (
     <main className="fixed inset-0 bg-black flex flex-col uppercase font-black overflow-hidden select-none">
+      {/* 🟢 The Diagnostics Overlay */}
+      <InputDebugger />
+
       {/* Invisible Bluetooth listener bridge */}
       <ClickerInput onAction={handleAction} />
 
