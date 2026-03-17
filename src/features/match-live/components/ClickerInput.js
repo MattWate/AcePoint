@@ -1,59 +1,32 @@
 "use client";
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function ClickerInput({ onAction }) {
   const inputRef = useRef(null);
-  const clickCount = useRef(0);
-  const timer = useRef(null);
+  const [debugLog, setDebugLog] = useState("Waiting for input...");
 
   useEffect(() => {
-    const keepFocus = () => {
-      // Small delay ensures focus happens AFTER the tap event finishes
-      setTimeout(() => {
-        if (inputRef.current) inputRef.current.focus();
-      }, 50);
+    const handleGlobalKey = (e) => {
+      // Log EVERY key to find out what your button is actually sending
+      setDebugLog(`Last Key: ${e.key} | Code: ${e.code}`);
+      console.log("AcePoint Debug:", e.key, e.code);
+
+      if (["VolumeUp", "VolumeDown", "Enter", " "].includes(e.key)) {
+        // Only preventDefault if we successfully caught a Padel-relevant key
+        e.preventDefault();
+        // We'll map VolumeUp to Point A for now to test
+        if (e.key === "VolumeUp" || e.key === "Enter") onAction('POINT_A');
+      }
     };
 
-    // Re-focus whenever the user interacts with the app
-    window.addEventListener('touchstart', keepFocus);
-    window.addEventListener('click', keepFocus);
-    keepFocus();
-
-    return () => {
-      window.removeEventListener('touchstart', keepFocus);
-      window.removeEventListener('click', keepFocus);
-    };
-  }, []);
-
-  const handleKeyDown = (e) => {
-    // These are the common keys sent by Android/iOS clickers
-    const validKeys = ["Enter", " ", "ArrowUp", "ArrowDown", "VolumeUp", "VolumeDown"];
-    
-    if (validKeys.includes(e.key)) {
-      e.preventDefault(); // This is what stops the Volume Bar from appearing
-      
-      clickCount.current++;
-      if (timer.current) clearTimeout(timer.current);
-
-      timer.current = setTimeout(() => {
-        if (clickCount.current === 1) onAction('POINT_A');
-        else if (clickCount.current === 2) onAction('POINT_B');
-        else if (clickCount.current === 3) onAction('UNDO');
-        clickCount.current = 0;
-      }, 350);
-    }
-  };
+    window.addEventListener('keydown', handleGlobalKey, true); // 'true' uses capture phase
+    return () => window.removeEventListener('keydown', handleGlobalKey, true);
+  }, [onAction]);
 
   return (
-    <input
-      ref={inputRef}
-      onKeyDown={handleKeyDown}
-      type="text"
-      inputMode="none" 
-      // Removed aria-hidden to fix the console error
-      className="fixed opacity-0 pointer-events-none inset-0 w-full h-full z-[9999]"
-      autoFocus
-      readOnly
-    />
+    <div className="fixed top-2 right-2 z-[10000] bg-black/80 p-2 rounded border border-brand text-[10px] text-brand font-mono">
+      {debugLog}
+      <input ref={inputRef} className="absolute opacity-0 pointer-events-none" autoFocus readOnly />
+    </div>
   );
 }
