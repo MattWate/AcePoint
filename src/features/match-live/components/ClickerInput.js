@@ -2,31 +2,52 @@
 import { useEffect, useRef, useState } from 'react';
 
 export default function ClickerInput({ onAction }) {
-  const inputRef = useRef(null);
-  const [debugLog, setDebugLog] = useState("Waiting for input...");
+  const [debugLog, setDebugLog] = useState("Ready for Padel...");
+  const clickCount = useRef(0);
+  const timer = useRef(null);
 
   useEffect(() => {
     const handleGlobalKey = (e) => {
-      // Log EVERY key to find out what your button is actually sending
-      setDebugLog(`Last Key: ${e.key} | Code: ${e.code}`);
-      console.log("AcePoint Debug:", e.key, e.code);
+      // Normalize different browser/OS naming conventions
+      const keyName = e.key;
+      setDebugLog(`Key: ${keyName}`);
 
-      if (["VolumeUp", "VolumeDown", "Enter", " "].includes(e.key)) {
-        // Only preventDefault if we successfully caught a Padel-relevant key
+      // List of keys to hijack (including your specific 'AudioVolumeUp')
+      const targetKeys = [
+        "AudioVolumeUp", 
+        "AudioVolumeDown", 
+        "VolumeUp", 
+        "VolumeDown", 
+        "Enter", 
+        " "
+      ];
+
+      if (targetKeys.includes(keyName)) {
+        // CRITICAL: This stops the Android volume slider from appearing
         e.preventDefault();
-        // We'll map VolumeUp to Point A for now to test
-        if (e.key === "VolumeUp" || e.key === "Enter") onAction('POINT_A');
+        
+        clickCount.current++;
+        if (timer.current) clearTimeout(timer.current);
+
+        timer.current = setTimeout(() => {
+          if (clickCount.current === 1) onAction('POINT_A');
+          else if (clickCount.current === 2) onAction('POINT_B');
+          else if (clickCount.current === 3) onAction('UNDO');
+          clickCount.current = 0;
+        }, 350);
       }
     };
 
-    window.addEventListener('keydown', handleGlobalKey, true); // 'true' uses capture phase
+    // Use 'keydown' with capture phase (true) to intercept before the OS does
+    window.addEventListener('keydown', handleGlobalKey, true);
     return () => window.removeEventListener('keydown', handleGlobalKey, true);
   }, [onAction]);
 
   return (
-    <div className="fixed top-2 right-2 z-[10000] bg-black/80 p-2 rounded border border-brand text-[10px] text-brand font-mono">
-      {debugLog}
-      <input ref={inputRef} className="absolute opacity-0 pointer-events-none" autoFocus readOnly />
+    <div className="fixed top-4 right-4 z-[9999] pointer-events-none">
+      <div className="bg-black/80 border border-brand px-3 py-1 rounded-full text-[10px] text-brand font-mono animate-pulse">
+        ● {debugLog}
+      </div>
     </div>
   );
 }
