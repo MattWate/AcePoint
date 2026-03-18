@@ -2,70 +2,48 @@
 import { useEffect, useRef } from 'react';
 
 export default function ClickerInput({ onAction }) {
-  const inputRef = useRef(null);
-  const clickCount = useRef(0);
-  const timer = useRef(null);
+  const audioRef = useRef(null);
+  const lastVolume = useRef(0.5);
 
   useEffect(() => {
-    // 1. Force Focus on every interaction
-    const lockFocus = () => {
-      setTimeout(() => inputRef.current?.focus(), 50);
-    };
+    const audio = audioRef.current;
+    if (!audio) return;
 
-    // 2. The Robust Interceptor (Capture Phase)
-    const handleCapture = (e) => {
-      const keys = ["AudioVolumeUp", "AudioVolumeDown", "VolumeUp", "VolumeDown", "Enter", " "];
+    const handleVolumeChange = () => {
+      const newVolume = audio.volume;
       
-      if (keys.includes(e.key)) {
-        // e.stopImmediatePropagation() prevents other scripts from seeing this
-        e.stopImmediatePropagation();
-        e.preventDefault(); 
+      // If the volume moved, the hardware button was likely pressed
+      if (newVolume !== lastVolume.current) {
+        // Map any volume movement to Point A for testing
+        onAction('POINT_A');
         
-        registerAction();
+        // Reset volume to middle to ensure we can detect the next move
+        lastVolume.current = newVolume;
       }
     };
 
-    const registerAction = () => {
-      clickCount.current++;
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => {
-        if (clickCount.current === 1) onAction('POINT_A');
-        else if (clickCount.current === 2) onAction('POINT_B');
-        else if (clickCount.current === 3) onAction('UNDO');
-        clickCount.current = 0;
-      }, 350);
+    // Chrome requires a user gesture (tap) to 'enable' audio monitoring
+    const enableAudio = () => {
+      audio.play().catch(() => {}); // Play silent pulse
+      window.removeEventListener('touchstart', enableAudio);
     };
 
-    // Use 'true' for the capture phase to grab the event first
-    window.addEventListener('keydown', handleCapture, true);
-    window.addEventListener('touchstart', lockFocus);
-    
-    lockFocus();
+    window.addEventListener('touchstart', enableAudio);
+    audio.addEventListener('volumechange', handleVolumeChange);
 
     return () => {
-      window.removeEventListener('keydown', handleCapture, true);
-      window.removeEventListener('touchstart', lockFocus);
+      window.removeEventListener('touchstart', enableAudio);
+      audio.removeEventListener('volumechange', handleVolumeChange);
     };
   }, [onAction]);
 
-  useEffect(() => {
-  const handleVolume = () => {
-    // If we haven't received a keydown event in 50ms, assume it was blocked
-    // and trigger a fallback Point A
-    onAction('POINT_A');
-  };
-
-  window.addEventListener('volumechange', handleVolume);
-  return () => window.removeEventListener('volumechange', handleVolume);
-}, [onAction]);
-
   return (
-    <input
-      ref={inputRef}
-      type="text"
-      inputMode="none"
-      className="fixed opacity-0 pointer-events-none inset-0 z-[9999]"
-      readOnly
+    <audio 
+      ref={audioRef}
+      className="hidden"
+      src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA="
+      controls={false}
+      loop
     />
   );
 }
